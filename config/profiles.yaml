@@ -55,6 +55,7 @@ profiles:
         brute_force: true
         metasploit: true
         searchsploit: true
+        cve_hunt: true
       post_exploitation:
         enabled: true
         linpeas: true
@@ -91,6 +92,7 @@ profiles:
         brute_threads: 32
         metasploit: true
         searchsploit: true
+        cve_hunt: true
       post_exploitation:
         enabled: true
         linpeas: true
@@ -174,6 +176,7 @@ profiles:
         pass_the_hash: true
         metasploit: true
         searchsploit: true
+        cve_hunt: true
       post_exploitation:
         enabled: true
         linpeas: false
@@ -210,6 +213,7 @@ profiles:
         brute_force: true
         metasploit: true
         searchsploit: true
+        cve_hunt: true
       post_exploitation:
         enabled: true
         linpeas: true
