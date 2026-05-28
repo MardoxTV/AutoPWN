@@ -2,6 +2,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sess
 from sqlalchemy import event, text
 from .models import Base
 import os
+from pathlib import Path
 
 DB_PATH = os.environ.get("AUTOPWN_DB_PATH", "./data/autopwn.db")
 DATABASE_URL = f"sqlite+aiosqlite:///{DB_PATH}"
@@ -18,6 +19,7 @@ def set_wal_mode(dbapi_conn, _):
 
 
 async def init_db():
+    Path(DB_PATH).parent.mkdir(parents=True, exist_ok=True)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
