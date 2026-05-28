@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Crosshair, Zap } from 'lucide-react'
 import { useCreateJob } from '../hooks/useJobs'
-import { useJobStore } from '../store/jobStore'
 
 const PROFILES = [
   { id: 'quick',      label: 'Quick',      desc: 'Top 1000 ports, basic enum only' },
@@ -16,8 +15,6 @@ const PROFILES = [
 export default function NewAttack() {
   const navigate = useNavigate()
   const createJob = useCreateJob()
-  const setActiveJob = useJobStore(s => s.setActiveJob)
-  const setQueuePosition = useJobStore(s => s.setQueuePosition)
 
   const [targetIp, setTargetIp] = useState('')
   const [targetName, setTargetName] = useState('')
@@ -30,10 +27,7 @@ export default function NewAttack() {
     if (!targetIp.trim()) { setError('Target IP is required'); return }
     try {
       const job = await createJob.mutateAsync({ target_ip: targetIp, target_name: targetName, profile })
-      setActiveJob(job)
-      if (typeof job.queue_position === 'number') {
-        setQueuePosition(job.queue_position)
-      }
+      // Status + queue_position now come from useJob(jobId) on the LiveView
       navigate(`/live/${job.id}`)
     } catch {
       setError('Failed to create job. Is the backend running?')

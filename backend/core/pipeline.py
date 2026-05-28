@@ -33,27 +33,43 @@ def _load_profile(profile_name: str) -> dict:
 
 
 async def run_pipeline(job_id: str):
+    logger.info(f"[{job_id}] run_pipeline ENTERED")
     try:
         async with AsyncSessionLocal() as session:
+            logger.info(f"[{job_id}] DB session opened")
             job = await crud.get_job(session, job_id)
+            logger.info(f"[{job_id}] DB get_job returned {'job' if job else 'None'}")
             if not job:
                 logger.error(f"Job {job_id} not found in database")
                 return
             target_ip = job.target_ip
             profile_name = job.profile
             options = json.loads(job.options or "{}")
+            logger.info(f"[{job_id}] Loaded: ip={target_ip} profile={profile_name}")
     except Exception as e:
-        logger.error(f"Cannot load job {job_id} from DB: {e}")
+        logger.exception(f"[{job_id}] Cannot load job from DB: {e}")
+        # At least mark the job failed so the UI doesn't hang forever
+        try:
+            await _set_status(job_id, "failed", error_msg=f"DB load failed: {e}")
+        except Exception:
+            pass
         return
 
     profile = _load_profile(profile_name)
     phases_cfg = profile.get("phases", {})
     wordlists = profile.get("wordlists", {})
+    logger.info(f"[{job_id}] Profile loaded: phases={list(phases_cfg.keys())}")
 
     if options.get("wordlist"):
         wordlists["directories"] = options["wordlist"]
 
-    await _set_status(job_id, "running")
+    logger.info(f"[{job_id}] About to call _set_status('running')")
+    try:
+        await _set_status(job_id, "running")
+        logger.info(f"[{job_id}] _set_status('running') OK")
+    except Exception as e:
+        logger.exception(f"[{job_id}] _set_status('running') FAILED: {e}")
+        return
 
     _current_phase: list[str] = [""]  # mutable container so CancelledError handler can read it
 
@@ -66,6 +82,9 @@ async def run_pipeline(job_id: str):
             await _end_phase(job_id, phase, "cancelled")
         await _set_status(job_id, "cancelled")
         raise  # propagate so the worker task knows it was cancelled
+    except Exception as e:
+        logger.exception(f"[{job_id}] _run_phases raised: {e}")
+        await _set_status(job_id, "failed", error_msg=str(e))
 
 
 async def _run_phases(job_id: str, target_ip: str, phases_cfg: dict,

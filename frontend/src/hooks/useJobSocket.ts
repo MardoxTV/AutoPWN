@@ -1,9 +1,10 @@
 import { useEffect, useRef } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import type { WsMessage } from '../api/types'
 import { useJobStore } from '../store/jobStore'
 import { API_TOKEN } from '../api/client'
 
-const WS_BASE = `ws://${window.location.host}`
+const WS_BASE = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}`
 const BACKOFF_BASE_MS = 1_000
 const BACKOFF_MAX_MS = 30_000
 
@@ -13,9 +14,18 @@ export function useJobSocket(jobId: string | null) {
   const retryTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const intentionalClose = useRef(false)
   const handleWsMessage = useJobStore(s => s.handleWsMessage)
+  const qc = useQueryClient()
 
   useEffect(() => {
     if (!jobId) return
+
+    // Clear per-job ephemeral state when switching jobs — terminal lines, phase, flags
+    useJobStore.setState({
+      terminalLines: [],
+      currentPhase: null,
+      phaseStatus: {},
+      recentFlags: [],
+    })
 
     intentionalClose.current = false
     retryCount.current = 0
@@ -33,6 +43,11 @@ export function useJobSocket(jobId: string | null) {
         try {
           const msg: WsMessage = JSON.parse(event.data)
           handleWsMessage(msg)
+          // Status changes affect queue_position too — refresh the API view immediately
+          if (msg.type === 'job_status' || msg.type === 'phase_change') {
+            qc.invalidateQueries({ queryKey: ['job', jobId] })
+            qc.invalidateQueries({ queryKey: ['jobs'] })
+          }
         } catch { /* ignore parse errors */ }
       }
 
@@ -63,5 +78,5 @@ export function useJobSocket(jobId: string | null) {
       ws.current?.close()
       ws.current = null
     }
-  }, [jobId, handleWsMessage])
+  }, [jobId, handleWsMessage, qc])
 }

@@ -43,15 +43,24 @@ async def job_log_ws(websocket: WebSocket, job_id: str):
 
             if event_task in done:
                 event = event_task.result()
-                await websocket.send_text(event.to_json())
+                try:
+                    await websocket.send_text(event.to_json())
+                except (WebSocketDisconnect, RuntimeError):
+                    # Client gone — stop the loop instead of crashing on the next iteration
+                    break
             elif recv_task in done:
                 try:
                     msg = recv_task.result()
                     data = json.loads(msg)
                     if data.get("type") == "ping":
                         await websocket.send_text(json.dumps({"type": "pong"}))
-                except (json.JSONDecodeError, Exception):
-                    pass
+                except WebSocketDisconnect:
+                    break
+                except RuntimeError:
+                    # Starlette throws RuntimeError if we try to receive after a disconnect message
+                    break
+                except json.JSONDecodeError:
+                    pass  # tolerate garbage from client
 
     except WebSocketDisconnect:
         logger.info(f"WebSocket client disconnected for job {job_id}")

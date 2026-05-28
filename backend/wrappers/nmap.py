@@ -1,6 +1,7 @@
 from __future__ import annotations
 import asyncio
 import logging
+import re
 import tempfile
 import os
 from typing import Optional
@@ -10,6 +11,21 @@ from .base import BaseWrapper
 from ..core.event_bus import make_finding, bus
 
 logger = logging.getLogger("autopwn.nmap")
+
+
+def _svc_attr(svc, key: str) -> str:
+    """Extract product/version/extrainfo from libnmap NmapService — defensive across versions.
+    Tries direct attribute, then service_extras dict, then parses the banner string."""
+    val = getattr(svc, key, None)
+    if isinstance(val, str) and val:
+        return val
+    extras = getattr(svc, "service_extras", None)
+    if isinstance(extras, dict) and extras.get(key):
+        return extras[key]
+    banner = getattr(svc, "banner", "") or ""
+    # banner format: "product: Apache httpd version: 2.4.41 extrainfo: ((Ubuntu))"
+    m = re.search(rf"{re.escape(key)}:\s*(.+?)(?=\s+\w+:|$)", banner)
+    return m.group(1).strip() if m else ""
 
 
 @dataclass
@@ -83,8 +99,8 @@ class NmapWrapper(BaseWrapper):
                         protocol=svc.protocol,
                         state=svc.state,
                         service=svc.service,
-                        version=svc.version,
-                        product=svc.product,
+                        version=_svc_attr(svc, "version"),
+                        product=_svc_attr(svc, "product"),
                     ))
             return result
         except Exception as e:

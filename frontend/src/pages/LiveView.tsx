@@ -2,7 +2,7 @@ import { useParams, Link } from 'react-router-dom'
 import { Terminal, BarChart2, XCircle } from 'lucide-react'
 import { useJobSocket } from '../hooks/useJobSocket'
 import { useJobStore } from '../store/jobStore'
-import { useCancelJob } from '../hooks/useJobs'
+import { useCancelJob, useJob } from '../hooks/useJobs'
 import LogTerminal from '../components/LogTerminal'
 import PhaseProgress from '../components/PhaseProgress'
 import FlagBanner from '../components/FlagBanner'
@@ -11,15 +11,18 @@ export default function LiveView() {
   const { jobId } = useParams<{ jobId: string }>()
   const cancelJob = useCancelJob()
 
-  const activeJob    = useJobStore(s => s.activeJob)
+  // API is source of truth for status + queue_position (polled every 3s, fresh per URL)
+  const { data: activeJob } = useJob(jobId ?? '')
+
+  // WS-driven ephemeral state (logs, current phase, flags)
   const lines        = useJobStore(s => s.terminalLines)
   const currentPhase = useJobStore(s => s.currentPhase)
   const phaseStatus  = useJobStore(s => s.phaseStatus)
   const recentFlags  = useJobStore(s => s.recentFlags)
-  const queuePosition = useJobStore(s => s.queuePosition)
 
   useJobSocket(jobId ?? null)
 
+  const queuePosition = activeJob?.queue_position ?? null
   const isRunning = activeJob?.status === 'running' || activeJob?.status === 'created'
 
   return (

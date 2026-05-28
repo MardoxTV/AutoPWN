@@ -6,11 +6,13 @@ import logging
 from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel, Field, field_validator
 from typing import Optional
+from sqlalchemy import select, func
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...database.session import get_session
 from ...database import crud
+from ...database.models import Job
 from ...core.job_queue import enqueue, cancel_job
 from ...core.auth import require_token
 from ...core.rate_limit import limiter
@@ -90,6 +92,27 @@ def _job_to_response(job) -> dict:
     }
 
 
+async def _compute_queue_position(session: AsyncSession, job) -> Optional[int]:
+    """Live queue position based on the DB, not stale at-creation snapshots.
+    Returns:
+      0     — currently running, OR next to be picked up
+      N > 0 — N jobs ahead in line (running + earlier-created 'created' jobs)
+      None  — terminal status (completed/failed/cancelled), not in queue
+    """
+    if job.status not in ("created", "running"):
+        return None
+    if job.status == "running":
+        return 0
+    # status == "created": count jobs ahead (running + older 'created' jobs)
+    result = await session.execute(
+        select(func.count()).select_from(Job).where(
+            Job.status.in_(("created", "running")),
+            Job.created_at < job.created_at,
+        )
+    )
+    return int(result.scalar() or 0)
+
+
 @router.post("", status_code=201)
 @limiter.limit("10/minute")
 async def create_job(request: Request, body: JobCreate,
@@ -120,7 +143,13 @@ async def list_jobs(limit: int = 50, offset: int = 0,
         raise HTTPException(status_code=400, detail="limit cannot exceed 200")
     try:
         jobs = await crud.list_jobs(session, limit=limit, offset=offset)
-        return [_job_to_response(j) for j in jobs]
+        # Compute queue position for each job using current DB state
+        out = []
+        for j in jobs:
+            resp = _job_to_response(j)
+            resp["queue_position"] = await _compute_queue_position(session, j)
+            out.append(resp)
+        return out
     except SQLAlchemyError as e:
         logger.error(f"DB error listing jobs: {e}")
         raise HTTPException(status_code=500, detail="Database error")
@@ -135,7 +164,9 @@ async def get_job(job_id: str, session: AsyncSession = Depends(get_session)):
         raise HTTPException(status_code=500, detail="Database error")
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
-    return _job_to_response(job)
+    resp = _job_to_response(job)
+    resp["queue_position"] = await _compute_queue_position(session, job)
+    return resp
 
 
 @router.delete("/{job_id}", status_code=204)
