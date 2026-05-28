@@ -5,9 +5,18 @@ import uuid
 from concurrent.futures import ThreadPoolExecutor
 from typing import Optional
 
-import msal
+# msal is an optional dependency — backend starts fine without it.
+# Azure endpoints will return a 503 if it isn't installed.
+try:
+    import msal as _msal
+    _MSAL_AVAILABLE = True
+except ImportError:
+    _msal = None  # type: ignore[assignment]
+    _MSAL_AVAILABLE = False
 
 logger = logging.getLogger("autopwn.azure.auth")
+if not _MSAL_AVAILABLE:
+    logger.warning("msal not installed — Azure auth endpoints will return 503. Install with: pip install msal")
 
 AZURE_CLI_CLIENT_ID = "04b07795-8ddb-461a-bbee-02f9e1bf7b46"
 GRAPH_SCOPES = ["https://graph.microsoft.com/.default"]
@@ -26,7 +35,11 @@ def get_session(session_id: str) -> Optional[dict]:
 
 
 def start_device_flow(session_id: str) -> dict:
-    app = msal.PublicClientApplication(
+    if not _MSAL_AVAILABLE:
+        raise RuntimeError(
+            "msal is not installed. Install it with: pip install msal"
+        )
+    app = _msal.PublicClientApplication(
         client_id=AZURE_CLI_CLIENT_ID,
         authority="https://login.microsoftonline.com/common",
     )
@@ -57,7 +70,7 @@ def start_device_flow(session_id: str) -> dict:
 async def run_device_flow_background(session_id: str) -> None:
     """Acquires Graph token in a thread, then tries ARM silent."""
     session = _auth_sessions[session_id]
-    app: msal.PublicClientApplication = session["msal_app"]
+    app = session["msal_app"]
     flow = session["flow"]
 
     loop = asyncio.get_event_loop()

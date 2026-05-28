@@ -18,7 +18,9 @@ async def start_auth(background_tasks: BackgroundTasks):
     try:
         flow_info = azure_auth.start_device_flow(session_id)
     except RuntimeError as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        msg = str(e)
+        code = 503 if "not installed" in msg else 500
+        raise HTTPException(status_code=code, detail=msg)
 
     # Start background polling in the event loop
     asyncio.create_task(azure_auth.run_device_flow_background(session_id))
