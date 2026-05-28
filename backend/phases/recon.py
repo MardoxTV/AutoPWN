@@ -1,66 +1,33 @@
 from __future__ import annotations
 import logging
-import os
-from pathlib import Path
 from ..wrappers.nmap import NmapWrapper, NmapResult
 from ..core.event_bus import bus, make_log
+from ..core.hosts import add_hosts, is_root
 from ..database import crud
 from ..database.session import AsyncSessionLocal
 
 logger = logging.getLogger("autopwn.recon")
 
-HOSTS_FILE = Path("/etc/hosts")
-AUTOPWN_HOSTS_MARKER = "# autopwn"
-
 
 async def _add_to_hosts(job_id: str, target_ip: str, hostnames: list[str]) -> list[str]:
-    """Append <ip> <hostname> entries to /etc/hosts. Returns hostnames that were added."""
+    """Add discovered hostnames to /etc/hosts and report to the live job log."""
     if not hostnames:
         return []
-    if os.geteuid() != 0:
+    if not is_root():
         await bus.publish(make_log(
             job_id,
             f"[Recon] Discovered hostnames {hostnames} but not running as root — skipping /etc/hosts update",
             phase="recon", level="warning",
         ))
         return []
-    try:
-        existing = HOSTS_FILE.read_text() if HOSTS_FILE.exists() else ""
-    except Exception as e:
+
+    added = add_hosts(target_ip=target_ip, hostnames=hostnames, job_id=job_id)
+    if added:
         await bus.publish(make_log(
-            job_id, f"[Recon] Could not read /etc/hosts: {e}",
-            phase="recon", level="warning",
+            job_id,
+            f"[Recon] Added {len(added)} hostname(s) to /etc/hosts: {', '.join(added)}",
+            phase="recon",
         ))
-        return []
-
-    added: list[str] = []
-    new_lines: list[str] = []
-    for host in hostnames:
-        # Skip if the exact ip+hostname pair already exists
-        line = f"{target_ip} {host}"
-        if any(host in l.split() and target_ip in l.split() for l in existing.splitlines()):
-            continue
-        new_lines.append(f"{line}  {AUTOPWN_HOSTS_MARKER} job={job_id}")
-        added.append(host)
-
-    if not new_lines:
-        return []
-
-    try:
-        with HOSTS_FILE.open("a") as f:
-            f.write("\n" + "\n".join(new_lines) + "\n")
-    except Exception as e:
-        await bus.publish(make_log(
-            job_id, f"[Recon] Could not write /etc/hosts: {e}",
-            phase="recon", level="error",
-        ))
-        return []
-
-    await bus.publish(make_log(
-        job_id,
-        f"[Recon] Added {len(added)} hostname(s) to /etc/hosts: {', '.join(added)}",
-        phase="recon",
-    ))
     return added
 
 

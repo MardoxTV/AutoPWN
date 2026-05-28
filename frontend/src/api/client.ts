@@ -26,6 +26,14 @@ export const listJobs = () => api.get<Job[]>('/jobs').then(r => r.data)
 export const getJob = (id: string) => api.get<Job>(`/jobs/${id}`).then(r => r.data)
 export const cancelJob = (id: string) => api.delete(`/jobs/${id}`)
 
+export interface HostsEntry { ip: string; hostname: string; job_id: string | null }
+
+export const listJobHosts = (id: string) =>
+  api.get<{ entries: HostsEntry[] }>(`/jobs/${id}/hosts`).then(r => r.data.entries)
+
+export const cleanupJobHosts = (id: string) =>
+  api.post<{ removed: number }>(`/jobs/${id}/cleanup`).then(r => r.data)
+
 // Results
 export const getResults = (jobId: string) =>
   api.get<{ job_id: string; findings: Finding[]; credentials: Credential[]; flags: Flag[] }>(

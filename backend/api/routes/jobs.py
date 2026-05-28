@@ -187,3 +187,19 @@ async def cancel_job_route(job_id: str, session: AsyncSession = Depends(get_sess
     await cancel_job(job_id)
     # Notify any connected WebSocket clients immediately
     await bus.publish(make_job_status(job_id, "cancelled"))
+
+
+@router.get("/{job_id}/hosts")
+async def list_job_hosts(job_id: str):
+    """List /etc/hosts entries that AutoPwn added for this job."""
+    from ...core.hosts import list_hosts
+    return {"entries": list_hosts(job_id=job_id)}
+
+
+@router.post("/{job_id}/cleanup")
+async def cleanup_job_hosts(job_id: str):
+    """Remove /etc/hosts entries that AutoPwn added for this job. Idempotent."""
+    from ...core.hosts import remove_hosts
+    removed = remove_hosts(job_id=job_id)
+    logger.info(f"Cleanup for job {job_id}: removed {removed} /etc/hosts lines")
+    return {"removed": removed}
