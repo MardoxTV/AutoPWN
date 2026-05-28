@@ -62,18 +62,28 @@ async def job_log_ws(websocket: WebSocket, job_id: str):
 
 
 async def tool_install_ws(websocket: WebSocket, tool_name: str):
-    """Stream tool install progress."""
+    """Stream tool install progress.
+    Special tool_name '_all' runs install_missing() for every missing tool."""
     if not await _accept_or_reject(websocket):
         return
-    from ..core.dependency_checker import install_tool
+    from ..core.dependency_checker import install_tool, install_missing
 
     async def send_line(line: str):
         await websocket.send_text(json.dumps({"type": "log", "message": line}))
 
-    success = await install_tool(tool_name, log_callback=send_line)
-    await websocket.send_text(json.dumps({
-        "type": "done",
-        "success": success,
-        "tool": tool_name,
-    }))
+    if tool_name == "_all":
+        results = await install_missing(log_callback=send_line)
+        await websocket.send_text(json.dumps({
+            "type": "done",
+            "success": all(results.values()) if results else True,
+            "tool": "_all",
+            "results": results,
+        }))
+    else:
+        success = await install_tool(tool_name, log_callback=send_line)
+        await websocket.send_text(json.dumps({
+            "type": "done",
+            "success": success,
+            "tool": tool_name,
+        }))
     await websocket.close()

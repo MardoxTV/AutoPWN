@@ -45,3 +45,13 @@ async def update_tool_endpoint(name: str):
     from ...core.dependency_checker import install_tool
     asyncio.create_task(install_tool(name))
     return {"message": f"Update triggered for {name}. Connect to /ws/tools/{name}/install for live output."}
+
+
+@router.post("/install-missing")
+async def install_missing_endpoint():
+    """Kick off install for every missing tool. Connect to /ws/tools/_all/install for live output."""
+    from ...core.dependency_checker import install_missing, get_all_statuses
+    statuses = get_all_statuses()
+    missing = [name for name, info in statuses["tools"].items() if info["status"] == "missing"]
+    asyncio.create_task(install_missing())
+    return {"triggered": missing, "count": len(missing)}

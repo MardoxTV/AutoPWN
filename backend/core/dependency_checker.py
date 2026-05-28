@@ -1,9 +1,11 @@
 from __future__ import annotations
 import asyncio
 import re
+import shutil
 import socket
 import logging
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Optional
 from packaging.version import Version, InvalidVersion
 
@@ -55,58 +57,53 @@ def _compare_versions(captured: str, min_ver: str) -> bool:
         return True  # can't compare, assume ok
 
 
-async def _check_tool(tool: ToolSpec) -> ToolStatus:
-    code, output = await _run_check(tool.check.command)
-
-    if code == -2 or (code != 0 and not tool.check.output_pattern):
-        return ToolStatus(
-            name=tool.name, status="missing", required=tool.required,
-            category=tool.category, description=tool.description,
-            install_method=tool.install.method,
-        )
-    if code == -1:
-        return ToolStatus(
-            name=tool.name, status="timeout", required=tool.required,
-            category=tool.category, description=tool.description,
-            install_method=tool.install.method,
-        )
-
-    if tool.check.output_pattern:
-        match = re.search(tool.check.output_pattern, output, re.IGNORECASE)
-        if not match:
-            return ToolStatus(
-                name=tool.name, status="missing", required=tool.required,
-                category=tool.category, description=tool.description,
-                install_method=tool.install.method,
-                message="Version pattern not found in output",
-            )
-        version = None
-        if tool.check.version_group is not None:
-            try:
-                version = match.group(tool.check.version_group)
-            except IndexError:
-                pass
-
-        if version and tool.check.min_version:
-            if not _compare_versions(version, tool.check.min_version):
-                return ToolStatus(
-                    name=tool.name, status="outdated", version=version,
-                    required=tool.required, category=tool.category,
-                    description=tool.description, install_method=tool.install.method,
-                    message=f"Installed: {version}, required: {tool.check.min_version}",
-                )
-
-        return ToolStatus(
-            name=tool.name, status="ok", version=version,
-            required=tool.required, category=tool.category,
-            description=tool.description, install_method=tool.install.method,
-        )
-
+def _base_status(tool: ToolSpec, **kw) -> ToolStatus:
     return ToolStatus(
-        name=tool.name, status="ok", required=tool.required,
+        name=tool.name, required=tool.required,
         category=tool.category, description=tool.description,
-        install_method=tool.install.method,
+        install_method=tool.install.method, **kw,
     )
+
+
+async def _check_tool(tool: ToolSpec) -> ToolStatus:
+    # 1. Definitive presence check — binary in PATH, or downloaded file on disk
+    if tool.binary:
+        if not shutil.which(tool.binary):
+            return _base_status(tool, status="missing")
+    elif tool.install.method == "download" and tool.install.destination:
+        if not Path(tool.install.destination).exists():
+            return _base_status(tool, status="missing")
+    # else: tool has no binary and isn't a download (e.g. impacket python lib)
+    #       — fall through to the command check below as the sole signal
+
+    # 2. Best-effort version detection — never fails the check if binary already exists
+    version: Optional[str] = None
+    output = ""
+    if tool.check.command:
+        code, output = await _run_check(tool.check.command)
+        if code == -1:
+            return _base_status(tool, status="timeout")
+        # If the tool has no binary AND the command itself wasn't found, mark missing.
+        if not tool.binary and tool.install.method != "download" and code == -2:
+            return _base_status(tool, status="missing")
+
+        if tool.check.output_pattern:
+            match = re.search(tool.check.output_pattern, output, re.IGNORECASE)
+            if match and tool.check.version_group is not None:
+                try:
+                    version = match.group(tool.check.version_group)
+                except IndexError:
+                    pass
+
+    # 3. Enforce min_version only if we successfully parsed a version
+    if version and tool.check.min_version:
+        if not _compare_versions(version, tool.check.min_version):
+            return _base_status(
+                tool, status="outdated", version=version,
+                message=f"Installed: {version}, required: {tool.check.min_version}",
+            )
+
+    return _base_status(tool, status="ok", version=version)
 
 
 async def _check_pip_package(pkg: PipPackageSpec) -> ToolStatus:
@@ -231,11 +228,42 @@ def _build_install_cmd(spec) -> Optional[list[str]]:
     if spec.method == "apt":
         return ["apt-get", "install", "-y", spec.package]
     elif spec.method == "pip":
-        return ["pip3", "install", spec.package]
+        return ["pip3", "install", "--break-system-packages", spec.package]
     elif spec.method == "gem":
         return ["gem", "install", spec.package]
     elif spec.method == "download":
+        Path(spec.destination).parent.mkdir(parents=True, exist_ok=True)
         return ["curl", "-fsSL", "-o", spec.destination, spec.url]
     elif spec.method == "custom":
         return spec.command
     return None
+
+
+async def install_missing(log_callback=None) -> dict:
+    """Sequentially install every tool currently flagged as missing.
+    Returns {tool_name: success_bool} for everything attempted."""
+    missing = [name for name, s in _status_cache.items() if s.status == "missing"]
+    results: dict[str, bool] = {}
+
+    if log_callback:
+        await log_callback(f"Installing {len(missing)} missing tools: {', '.join(missing) or '(none)'}")
+
+    for name in missing:
+        if log_callback:
+            await log_callback(f"\n=== {name} ===")
+        try:
+            ok = await install_tool(name, log_callback=log_callback)
+        except Exception as e:
+            ok = False
+            if log_callback:
+                await log_callback(f"ERROR installing {name}: {e}")
+        results[name] = ok
+
+    if log_callback:
+        succeeded = [n for n, ok in results.items() if ok]
+        failed = [n for n, ok in results.items() if not ok]
+        await log_callback(f"\nDone. Installed: {len(succeeded)}, Failed: {len(failed)}")
+        if failed:
+            await log_callback(f"Failed tools: {', '.join(failed)}")
+
+    return results

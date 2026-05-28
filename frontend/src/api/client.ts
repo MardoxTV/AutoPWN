@@ -45,6 +45,9 @@ export const getToolsStatus = () =>
 export const installTool = (name: string) =>
   api.post(`/tools/${name}/install`).then(r => r.data)
 
+export const installAllMissing = () =>
+  api.post<{ triggered: string[]; count: number }>('/tools/install-missing').then(r => r.data)
+
 export const checkAllTools = () =>
   api.post('/tools/check-all').then(r => r.data)
 
