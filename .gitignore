@@ -21,9 +21,10 @@ scanner/bin/
 frontend/node_modules/
 frontend/dist/
 
-# Env
+# Env (keep .env.example so users can copy it as a template)
 .env
-.env.*
+.env.local
+.env.*.local
 
 # IDE
 .vscode/
