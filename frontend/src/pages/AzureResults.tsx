@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import {
-  Shield, AlertTriangle, CheckCircle, Info, ChevronDown, ChevronRight,
+  CheckCircle, Info, ChevronDown, ChevronRight,
   Loader2, ArrowLeft, XCircle, AlertCircle, SkipForward,
 } from 'lucide-react'
 import { clsx } from 'clsx'
