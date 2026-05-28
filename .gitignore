@@ -1,0 +1,31 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+
+# Database
+data/autopwn.db
+data/autopwn.db-wal
+data/autopwn.db-shm
+
+# Reports and loot (sensitive)
+data/reports/
+data/loot/
+
+# Go binaries
+scanner/bin/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+
+# Env
+.env
+.env.*
+
+# IDE
+.vscode/
+.idea/
+*.swp

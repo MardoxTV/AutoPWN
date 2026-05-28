@@ -1,0 +1,57 @@
+version: "1"
+
+server:
+  host: "0.0.0.0"
+  port: 8000
+  reload: false
+  log_level: "info"
+
+scanner_service:
+  host: "127.0.0.1"
+  port: 8001
+  binary_path: "./scanner/bin/scanner"
+  startup_timeout_s: 10
+
+database:
+  path: "./data/autopwn.db"
+  wal_mode: true
+
+paths:
+  loot_dir: "./data/loot"
+  reports_dir: "./data/reports"
+  wordlists_dir: "./data/wordlists"
+  linpeas: "/opt/autopwn/loot/linpeas.sh"
+  winpeas: "/opt/autopwn/loot/winpeas.exe"
+  pspy64: "/opt/autopwn/loot/pspy64"
+
+network:
+  vpn_interface: "tun0"
+  default_timeout_s: 30
+  scan_rate: 1000
+
+msfrpc:
+  host: "127.0.0.1"
+  port: 55553
+  username: "msf"
+  # Password is read from MSF_PASSWORD env var (set in .env). Not stored here.
+  ssl: false
+  startup_wait_s: 40
+
+dependency_check:
+  timeout_s: 10
+  parallel: true
+
+websocket:
+  queue_maxsize: 1000
+  ping_interval_s: 30
+
+flags:
+  patterns:
+    - "[a-f0-9]{32}"
+    - "HTB\\{[^}]+\\}"
+  search_paths:
+    - "/home/*/user.txt"
+    - "/root/root.txt"
+    - "/home/*/Desktop/user.txt"
+    - "C:/Users/*/Desktop/user.txt"
+    - "C:/Users/Administrator/Desktop/root.txt"

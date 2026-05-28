@@ -1,0 +1,37 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* { box-sizing: border-box; }
+
+body {
+  font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+  background-color: #0d1117;
+  color: #e6edf3;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #161b22; }
+::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #58a6ff; }
+
+/* Terminal pane */
+.terminal {
+  background: #010409;
+  border: 1px solid #30363d;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  overflow-y: auto;
+  padding: 1rem;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.ansi-red    { color: #f85149; }
+.ansi-green  { color: #3fb950; }
+.ansi-yellow { color: #d29922; }
+.ansi-blue   { color: #58a6ff; }
+.ansi-cyan   { color: #39c5cf; }
+.ansi-bold   { font-weight: 600; }

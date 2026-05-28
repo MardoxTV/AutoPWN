@@ -1,0 +1,324 @@
+version: "1"
+
+tools:
+  - name: nmap
+    description: "Network port scanner"
+    category: recon
+    required: true
+    install:
+      method: apt
+      package: nmap
+    check:
+      command: ["nmap", "--version"]
+      output_pattern: "Nmap version (\\d+\\.\\d+)"
+      version_group: 1
+      min_version: "7.80"
+    update:
+      method: apt
+      package: nmap
+    binary: nmap
+
+  - name: gobuster
+    description: "Directory/DNS/vhost brute force"
+    category: enumeration
+    required: true
+    install:
+      method: apt
+      package: gobuster
+    check:
+      command: ["gobuster", "version"]
+      output_pattern: "gobuster v(\\d+\\.\\d+\\.\\d+)"
+      version_group: 1
+      min_version: "3.0.0"
+    update:
+      method: apt
+      package: gobuster
+    binary: gobuster
+
+  - name: ffuf
+    description: "Fast web fuzzer"
+    category: enumeration
+    required: false
+    install:
+      method: apt
+      package: ffuf
+    check:
+      command: ["ffuf", "-V"]
+      output_pattern: "ffuf v(\\d+\\.\\d+\\.\\d+)"
+      version_group: 1
+      min_version: "2.0.0"
+    update:
+      method: apt
+      package: ffuf
+    binary: ffuf
+
+  - name: nikto
+    description: "Web server vulnerability scanner"
+    category: enumeration
+    required: false
+    install:
+      method: apt
+      package: nikto
+    check:
+      command: ["nikto", "-Version"]
+      output_pattern: "Nikto v(\\d+\\.\\d+)"
+      version_group: 1
+      min_version: "2.1"
+    update:
+      method: apt
+      package: nikto
+    binary: nikto
+
+  - name: enum4linux-ng
+    description: "SMB/Windows enumeration (modern rewrite)"
+    category: enumeration
+    required: false
+    install:
+      method: pip
+      package: enum4linux-ng
+    check:
+      command: ["enum4linux-ng", "--help"]
+      output_pattern: "enum4linux-ng"
+      version_group: null
+      min_version: null
+    update:
+      method: pip
+      package: enum4linux-ng
+    binary: enum4linux-ng
+    fallback: enum4linux
+
+  - name: enum4linux
+    description: "SMB/Windows enumeration (classic)"
+    category: enumeration
+    required: false
+    install:
+      method: apt
+      package: enum4linux
+    check:
+      command: ["enum4linux", "-h"]
+      output_pattern: "enum4linux"
+      version_group: null
+      min_version: null
+    update:
+      method: apt
+      package: enum4linux
+    binary: enum4linux
+
+  - name: smbclient
+    description: "SMB client for file listing and null sessions"
+    category: enumeration
+    required: false
+    install:
+      method: apt
+      package: smbclient
+    check:
+      command: ["smbclient", "--version"]
+      output_pattern: "Version (\\d+\\.\\d+)"
+      version_group: 1
+      min_version: "4.0"
+    update:
+      method: apt
+      package: smbclient
+    binary: smbclient
+
+  - name: hydra
+    description: "Network login brute-force"
+    category: exploitation
+    required: true
+    install:
+      method: apt
+      package: hydra
+    check:
+      command: ["hydra", "-h"]
+      output_pattern: "Hydra v(\\d+\\.\\d+)"
+      version_group: 1
+      min_version: "9.0"
+    update:
+      method: apt
+      package: hydra
+    binary: hydra
+
+  - name: sqlmap
+    description: "SQL injection automation"
+    category: exploitation
+    required: false
+    install:
+      method: apt
+      package: sqlmap
+    check:
+      command: ["sqlmap", "--version"]
+      output_pattern: "(\\d+\\.\\d+\\.\\d+)"
+      version_group: 1
+      min_version: "1.7"
+    update:
+      method: apt
+      package: sqlmap
+    binary: sqlmap
+
+  - name: searchsploit
+    description: "Offline ExploitDB search"
+    category: exploitation
+    required: false
+    install:
+      method: apt
+      package: exploitdb
+    check:
+      command: ["searchsploit", "--version"]
+      output_pattern: "SearchSploit"
+      version_group: null
+      min_version: null
+    update:
+      method: custom
+      command: ["searchsploit", "-u"]
+    binary: searchsploit
+
+  - name: metasploit
+    description: "Exploit framework (via MSFRPC)"
+    category: exploitation
+    required: false
+    install:
+      method: apt
+      package: metasploit-framework
+    check:
+      command: ["msfconsole", "--version"]
+      output_pattern: "Framework Version:\\s*(\\d+\\.\\d+\\.\\d+)"
+      version_group: 1
+      min_version: "6.0.0"
+    update:
+      method: apt
+      package: metasploit-framework
+    binary: msfconsole
+
+  - name: crackmapexec
+    description: "Swiss army knife for pentesting Windows/AD networks"
+    category: exploitation
+    required: false
+    install:
+      method: apt
+      package: crackmapexec
+    check:
+      command: ["crackmapexec", "--version"]
+      output_pattern: "(\\d+\\.\\d+\\.\\d+)"
+      version_group: 1
+      min_version: "5.0.0"
+    update:
+      method: apt
+      package: crackmapexec
+    binary: crackmapexec
+
+  - name: evil-winrm
+    description: "Windows Remote Management shell"
+    category: exploitation
+    required: false
+    install:
+      method: gem
+      package: evil-winrm
+    check:
+      command: ["evil-winrm", "--version"]
+      output_pattern: "(\\d+\\.\\d+)"
+      version_group: 1
+      min_version: "3.0"
+    update:
+      method: gem
+      package: evil-winrm
+    binary: evil-winrm
+
+  - name: impacket
+    description: "Windows/AD attack suite (python library)"
+    category: exploitation
+    required: false
+    install:
+      method: pip
+      package: impacket
+    check:
+      command: ["python3", "-c", "import impacket; print(impacket.__version__)"]
+      output_pattern: "(\\d+\\.\\d+\\.\\d+)"
+      version_group: 1
+      min_version: "0.10.0"
+    update:
+      method: pip
+      package: impacket
+    binary: null
+
+  - name: linpeas
+    description: "Linux privilege escalation enumeration script"
+    category: post_exploitation
+    required: false
+    install:
+      method: download
+      url: "https://github.com/carlospolop/PEASS-ng/releases/latest/download/linpeas.sh"
+      destination: "/opt/autopwn/loot/linpeas.sh"
+      chmod: "755"
+    check:
+      command: ["test", "-f", "/opt/autopwn/loot/linpeas.sh"]
+      output_pattern: null
+      version_group: null
+      min_version: null
+    update:
+      method: download
+      url: "https://github.com/carlospolop/PEASS-ng/releases/latest/download/linpeas.sh"
+      destination: "/opt/autopwn/loot/linpeas.sh"
+      chmod: "755"
+    binary: null
+
+  - name: winpeas
+    description: "Windows privilege escalation enumeration script"
+    category: post_exploitation
+    required: false
+    install:
+      method: download
+      url: "https://github.com/carlospolop/PEASS-ng/releases/latest/download/winPEASx64.exe"
+      destination: "/opt/autopwn/loot/winpeas.exe"
+      chmod: null
+    check:
+      command: ["test", "-f", "/opt/autopwn/loot/winpeas.exe"]
+      output_pattern: null
+      version_group: null
+      min_version: null
+    update:
+      method: download
+      url: "https://github.com/carlospolop/PEASS-ng/releases/latest/download/winPEASx64.exe"
+      destination: "/opt/autopwn/loot/winpeas.exe"
+      chmod: null
+    binary: null
+
+  - name: pspy
+    description: "Unprivileged Linux process snooping"
+    category: post_exploitation
+    required: false
+    install:
+      method: download
+      url: "https://github.com/DominicBreuker/pspy/releases/latest/download/pspy64"
+      destination: "/opt/autopwn/loot/pspy64"
+      chmod: "755"
+    check:
+      command: ["test", "-f", "/opt/autopwn/loot/pspy64"]
+      output_pattern: null
+      version_group: null
+      min_version: null
+    update:
+      method: download
+      url: "https://github.com/DominicBreuker/pspy/releases/latest/download/pspy64"
+      destination: "/opt/autopwn/loot/pspy64"
+      chmod: "755"
+    binary: null
+
+pip_packages:
+  - name: pymetasploit3
+    install_command: ["pip3", "install", "pymetasploit3"]
+    check_import: "pymetasploit3"
+
+  - name: weasyprint
+    apt_package: python3-weasyprint
+    install_command: ["apt-get", "install", "-y", "python3-weasyprint"]
+    check_import: "weasyprint"
+
+  - name: python-libnmap
+    install_command: ["pip3", "install", "python-libnmap"]
+    check_import: "libnmap"
+
+network_prerequisites:
+  - name: tun0
+    description: "HTB VPN interface (OpenVPN)"
+    check: interface_exists
+    warning: "HTB VPN (tun0) is not up. Machines will not be reachable. Run: sudo openvpn <your.ovpn>"

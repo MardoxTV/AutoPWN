@@ -1,0 +1,221 @@
+version: "1"
+
+profiles:
+  quick:
+    description: "Fast surface scan — top 1000 ports, basic enum, no brute force"
+    phases:
+      recon:
+        enabled: true
+        nmap_args: "-sV -sC --top-ports 1000 -T4"
+        udp: false
+      enumeration:
+        enabled: true
+        http: true
+        smb: true
+        ftp: true
+        ssh: true
+        snmp: false
+        ldap: false
+      exploitation:
+        enabled: false
+        sqli: false
+        xss: false
+        lfi: false
+        brute_force: false
+        metasploit: false
+        searchsploit: true
+      post_exploitation:
+        enabled: false
+    wordlists:
+      directories: "/usr/share/wordlists/dirb/common.txt"
+      usernames: "/usr/share/seclists/Usernames/top-usernames-shortlist.txt"
+      passwords: "/usr/share/wordlists/rockyou.txt"
+
+  standard:
+    description: "Full pipeline — all phases, common wordlists, selective MSF"
+    phases:
+      recon:
+        enabled: true
+        nmap_args: "-sV -sC -p- -T4"
+        udp: false
+      enumeration:
+        enabled: true
+        http: true
+        smb: true
+        ftp: true
+        ssh: true
+        snmp: true
+        ldap: true
+      exploitation:
+        enabled: true
+        sqli: true
+        xss: true
+        ssti: true
+        lfi: true
+        brute_force: true
+        metasploit: true
+        searchsploit: true
+      post_exploitation:
+        enabled: true
+        linpeas: true
+        winpeas: true
+        pspy: true
+    wordlists:
+      directories: "/usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt"
+      usernames: "/usr/share/seclists/Usernames/xato-net-10-million-usernames-dup.txt"
+      passwords: "/usr/share/wordlists/rockyou.txt"
+
+  aggressive:
+    description: "Full TCP+UDP, all exploits, full brute force — loud but thorough"
+    phases:
+      recon:
+        enabled: true
+        nmap_args: "-sV -sC -p- -T5 --script=vuln"
+        udp: true
+        udp_args: "-sU --top-ports 200"
+      enumeration:
+        enabled: true
+        http: true
+        smb: true
+        ftp: true
+        ssh: true
+        snmp: true
+        ldap: true
+      exploitation:
+        enabled: true
+        sqli: true
+        xss: true
+        ssti: true
+        lfi: true
+        brute_force: true
+        brute_threads: 32
+        metasploit: true
+        searchsploit: true
+      post_exploitation:
+        enabled: true
+        linpeas: true
+        winpeas: true
+        pspy: true
+    wordlists:
+      directories: "/usr/share/wordlists/dirbuster/directory-list-2.3-big.txt"
+      usernames: "/usr/share/seclists/Usernames/xato-net-10-million-usernames.txt"
+      passwords: "/usr/share/wordlists/rockyou.txt"
+
+  web_focus:
+    description: "Web-only — deep HTTP/S enumeration and all web attack vectors"
+    phases:
+      recon:
+        enabled: true
+        nmap_args: "-sV -sC -p 80,443,8080,8443,8000,8888,3000,5000 -T4"
+        udp: false
+      enumeration:
+        enabled: true
+        http: true
+        smb: false
+        ftp: false
+        ssh: false
+        snmp: false
+        ldap: false
+        http_extra:
+          vhost_fuzzing: true
+          parameter_fuzzing: true
+          js_analysis: true
+      exploitation:
+        enabled: true
+        sqli: true
+        xss: true
+        lfi: true
+        rfi: true
+        ssti: true
+        xxe: true
+        brute_force: false
+        metasploit: false
+        searchsploit: true
+      post_exploitation:
+        enabled: true
+        linpeas: true
+        winpeas: false
+        pspy: true
+    wordlists:
+      directories: "/usr/share/seclists/Discovery/Web-Content/raft-large-directories.txt"
+      vhosts: "/usr/share/seclists/Discovery/DNS/subdomains-top1million-5000.txt"
+      parameters: "/usr/share/seclists/Discovery/Web-Content/burp-parameter-names.txt"
+      usernames: "/usr/share/seclists/Usernames/top-usernames-shortlist.txt"
+      passwords: "/usr/share/wordlists/rockyou.txt"
+
+  ad_windows:
+    description: "Active Directory / Windows focus — SMB, LDAP, Kerberos, impacket"
+    phases:
+      recon:
+        enabled: true
+        nmap_args: "-sV -sC -p 88,135,139,389,445,464,593,636,3268,3269,5985,9389 -T4"
+        udp: false
+      enumeration:
+        enabled: true
+        http: true
+        smb: true
+        ftp: false
+        ssh: false
+        snmp: false
+        ldap: true
+        kerberos: true
+        bloodhound: true
+        rid_brute: true
+      exploitation:
+        enabled: true
+        sqli: false
+        xss: false
+        ssti: false
+        lfi: false
+        brute_force: true
+        kerbrute: true
+        asreproast: true
+        kerberoast: true
+        pass_the_hash: true
+        metasploit: true
+        searchsploit: true
+      post_exploitation:
+        enabled: true
+        linpeas: false
+        winpeas: true
+        pspy: false
+        secretsdump: true
+    wordlists:
+      directories: "/usr/share/wordlists/dirb/common.txt"
+      usernames: "/usr/share/seclists/Usernames/xato-net-10-million-usernames-dup.txt"
+      passwords: "/usr/share/wordlists/rockyou.txt"
+      ad_usernames: "/usr/share/seclists/Usernames/Names/names.txt"
+
+  custom:
+    description: "User-defined — configure phases and modules via UI checkboxes"
+    phases:
+      recon:
+        enabled: true
+        nmap_args: "-sV -sC -p- -T4"
+        udp: false
+      enumeration:
+        enabled: true
+        http: true
+        smb: true
+        ftp: true
+        ssh: true
+        snmp: false
+        ldap: false
+      exploitation:
+        enabled: true
+        sqli: true
+        xss: true
+        ssti: true
+        lfi: true
+        brute_force: true
+        metasploit: true
+        searchsploit: true
+      post_exploitation:
+        enabled: true
+        linpeas: true
+        winpeas: true
+        pspy: false
+    wordlists:
+      directories: "/usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt"
+      usernames: "/usr/share/seclists/Usernames/top-usernames-shortlist.txt"
+      passwords: "/usr/share/wordlists/rockyou.txt"

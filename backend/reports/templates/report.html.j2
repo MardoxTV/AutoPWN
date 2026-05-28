@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>AutoPwn Report — {{ job.target_ip }}</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'JetBrains Mono', monospace, sans-serif; background: #0d1117; color: #e6edf3; padding: 2rem; }
+  h1 { color: #58a6ff; font-size: 1.6rem; margin-bottom: 0.25rem; }
+  h2 { color: #8b949e; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; margin: 2rem 0 0.75rem; border-bottom: 1px solid #30363d; padding-bottom: 0.4rem; }
+  .meta { color: #8b949e; font-size: 0.8rem; margin-bottom: 2rem; }
+  .badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 9999px; font-size: 0.7rem; border: 1px solid; }
+  .badge-ok { border-color: #3fb95040; color: #3fb950; }
+  .badge-info { border-color: #58a6ff40; color: #58a6ff; }
+  .badge-medium { border-color: #d2992240; color: #d29922; }
+  .badge-high { border-color: #ff8c0040; color: #ff8c00; }
+  .badge-critical { border-color: #f8514940; color: #f85149; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.8rem; margin-top: 0.5rem; }
+  th { text-align: left; padding: 0.4rem 0.75rem; color: #8b949e; font-size: 0.7rem; text-transform: uppercase; background: #161b22; }
+  td { padding: 0.4rem 0.75rem; border-top: 1px solid #21262d; }
+  tr:hover td { background: #161b22; }
+  .flag { background: #d2992215; border: 1px solid #d2992240; border-radius: 6px; padding: 0.75rem 1rem; margin: 0.4rem 0; }
+  .flag-label { color: #d29922; font-size: 0.7rem; text-transform: uppercase; font-weight: bold; }
+  .flag-value { font-family: monospace; font-size: 0.9rem; margin-top: 0.2rem; }
+  .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 2rem; }
+  .summary-card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 1rem; }
+  .summary-card .num { font-size: 2rem; font-weight: bold; color: #58a6ff; }
+  .summary-card .lbl { font-size: 0.75rem; color: #8b949e; }
+</style>
+</head>
+<body>
+
+<h1>AutoPwn Report</h1>
+<p class="meta">
+  Target: <strong>{{ job.target_ip }}</strong>
+  {% if job.target_name %} ({{ job.target_name }}){% endif %} ·
+  Profile: {{ job.profile }} ·
+  Status: <span class="badge badge-{{ 'ok' if job.status == 'completed' else 'high' }}">{{ job.status }}</span> ·
+  Generated: {{ generated_at }}
+</p>
+
+<!-- Summary -->
+<div class="summary-grid">
+  <div class="summary-card">
+    <div class="num">{{ finding_counts.open_port }}</div>
+    <div class="lbl">Open Ports</div>
+  </div>
+  <div class="summary-card">
+    <div class="num">{{ finding_counts.vuln }}</div>
+    <div class="lbl">Vulnerabilities</div>
+  </div>
+  <div class="summary-card">
+    <div class="num">{{ credentials | length }}</div>
+    <div class="lbl">Credentials</div>
+  </div>
+  <div class="summary-card">
+    <div class="num">{{ flags | length }}</div>
+    <div class="lbl">Flags</div>
+  </div>
+</div>
+
+<!-- Flags -->
+{% if flags %}
+<h2>Flags</h2>
+{% for flag in flags %}
+<div class="flag">
+  <div class="flag-label">{{ flag.flag_type | upper }} FLAG</div>
+  <div class="flag-value">{{ flag.value }}</div>
+  {% if flag.path %}<div style="color:#8b949e;font-size:0.75rem;margin-top:0.2rem">{{ flag.path }}</div>{% endif %}
+</div>
+{% endfor %}
+{% endif %}
+
+<!-- Credentials -->
+{% if credentials %}
+<h2>Credentials</h2>
+<table>
+  <thead><tr><th>Service</th><th>Username</th><th>Password</th><th>Port</th><th>Found By</th></tr></thead>
+  <tbody>
+  {% for c in credentials %}
+  <tr>
+    <td><span class="badge badge-info">{{ c.service }}</span></td>
+    <td>{{ c.username }}</td>
+    <td style="color:#f85149">{{ c.password }}</td>
+    <td>{{ c.port or '-' }}</td>
+    <td style="color:#8b949e">{{ c.found_by or '-' }}</td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+<!-- Findings -->
+<h2>All Findings ({{ findings | length }})</h2>
+<table>
+  <thead><tr><th>Severity</th><th>Phase</th><th>Tool</th><th>Type</th><th>Value</th></tr></thead>
+  <tbody>
+  {% for f in findings %}
+  <tr>
+    <td><span class="badge badge-{{ f.severity or 'info' }}">{{ f.severity or 'info' }}</span></td>
+    <td style="color:#8b949e">{{ f.phase }}</td>
+    <td style="color:#8b949e">{{ f.tool }}</td>
+    <td>{{ f.finding_type }}</td>
+    <td style="font-family:monospace;font-size:0.75rem;word-break:break-all">{{ f.value }}</td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+</body>
+</html>
