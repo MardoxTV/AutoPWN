@@ -30,6 +30,7 @@ apt-get install -y -qq \
   exploitdb metasploit-framework \
   python3 python3-pip python3-venv python3-weasyprint \
   curl wget git build-essential golang-go ruby ruby-dev \
+  sshpass evil-winrm \
   >/dev/null 2>&1 && ok "System packages installed"
 
 # ─── Python venv ───────────────────────────────────────────────

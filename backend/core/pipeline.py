@@ -180,6 +180,7 @@ async def _run_phases(job_id: str, target_ip: str, phases_cfg: dict,
                 job_id=job_id,
                 target_ip=target_ip,
                 profile_config=postex_cfg,
+                nmap_result=nmap_result,   # gives OS detection + port list to flag_hunter
             )
             await _end_phase(job_id, "post_exploitation", "completed")
         except Exception as e:
