@@ -44,6 +44,35 @@ class NmapResult:
     ports: list[NmapPort] = field(default_factory=list)
     os_guess: Optional[str] = None
     hostnames: list[str] = field(default_factory=list)
+    # Hostnames discovered in script output (http-title redirects, ssl-cert CN/SAN, etc.)
+    # — separate from hostnames so the caller knows which ones came from probing the service.
+    discovered_hostnames: list[str] = field(default_factory=list)
+
+
+_URL_RE = re.compile(r"https?://([a-zA-Z0-9][\w.-]+\.[a-zA-Z]{2,})", re.IGNORECASE)
+_SSL_CN_RE = re.compile(r"commonName=([\w.-]+\.[a-zA-Z]{2,})", re.IGNORECASE)
+_SSL_SAN_RE = re.compile(r"DNS:([\w.-]+\.[a-zA-Z]{2,})", re.IGNORECASE)
+
+
+def _extract_hostnames_from_scripts(svc) -> set[str]:
+    """Pull hostnames out of nmap script results: http-title redirects, SSL cert CN/SAN, etc."""
+    found: set[str] = set()
+    scripts = getattr(svc, "scripts_results", None) or []
+    for script in scripts:
+        if not isinstance(script, dict):
+            continue
+        sid = script.get("id", "")
+        out = script.get("output", "") or ""
+
+        if sid in ("http-title", "http-redirect", "http-server-header"):
+            for m in _URL_RE.findall(out):
+                found.add(m.lower())
+        elif sid == "ssl-cert":
+            for m in _SSL_CN_RE.findall(out):
+                found.add(m.lower())
+            for m in _SSL_SAN_RE.findall(out):
+                found.add(m.lower())
+    return found
 
 
 class NmapWrapper(BaseWrapper):
@@ -89,6 +118,7 @@ class NmapWrapper(BaseWrapper):
             from libnmap.parser import NmapParser
             report = NmapParser.parse_fromfile(xml_path)
             result = NmapResult(target=target)
+            discovered: set[str] = set()
             for host in report.hosts:
                 result.hostnames = list(host.hostnames)
                 if host.os_match_probabilities():
@@ -102,6 +132,12 @@ class NmapWrapper(BaseWrapper):
                         version=_svc_attr(svc, "version"),
                         product=_svc_attr(svc, "product"),
                     ))
+                    discovered.update(_extract_hostnames_from_scripts(svc))
+            # Filter out anything that's already the bare target IP, common false positives, etc.
+            result.discovered_hostnames = sorted(
+                h for h in discovered
+                if h != target and not h.replace(".", "").isdigit() and "." in h
+            )
             return result
         except Exception as e:
             logger.warning(f"[nmap] Failed to parse XML results for {target}: {e}")

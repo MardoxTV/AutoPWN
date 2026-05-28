@@ -20,8 +20,14 @@ async def run_enumeration(job_id: str, target_ip: str, nmap_result: NmapResult,
                            profile_config: dict, wordlist: str = DEFAULT_WORDLIST):
     open_ports = [p for p in nmap_result.ports if p.state == "open"]
 
+    # HTTP probing targets: the IP plus any discovered hostnames (resolved via /etc/hosts
+    # by the recon phase). Other protocols stay on the IP.
+    http_targets = [target_ip] + [h for h in nmap_result.hostnames if h and h != target_ip]
+
     await bus.publish(make_log(
-        job_id, f"[Enum] Dispatching enumeration for {len(open_ports)} open port(s)",
+        job_id,
+        f"[Enum] Dispatching enumeration for {len(open_ports)} open port(s) "
+        f"across {len(http_targets)} HTTP target(s)",
         phase="enumeration",
     ))
 
@@ -32,7 +38,8 @@ async def run_enumeration(job_id: str, target_ip: str, nmap_result: NmapResult,
         # Independent ifs — a port can trigger multiple enumerators (e.g. HTTPS + vhost)
         if profile_config.get("http") and svc in ("http", "https", "http-alt", "ssl/http"):
             ssl = "https" in svc or port.port == 443
-            tasks.append(_enum_http(job_id, target_ip, port, ssl, wordlist))
+            for host in http_targets:
+                tasks.append(_enum_http(job_id, host, port, ssl, wordlist))
 
         if profile_config.get("smb") and (svc in ("microsoft-ds", "smb", "netbios-ssn") or port.port in (139, 445)):
             tasks.append(_enum_smb(job_id, target_ip, port))
